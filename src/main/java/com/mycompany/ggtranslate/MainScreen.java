@@ -5,12 +5,11 @@
  */
 package com.mycompany.ggtranslate;
 
-import java.sql.Connection;
-import java.sql.SQLException;
+import com.google.cloud.translate.Detection;
+import static com.mycompany.ggtranslate.JavaSoundRecorder.RECORD_TIME;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  *
@@ -30,9 +29,20 @@ public class MainScreen extends javax.swing.JFrame {
         translateAPI = new TranslateAPI();
         db = new LanguageDAO();
         listLanguage = db.getLanguageList();
+        listLanguage.sort(new Comparator<Language>(){
+            @Override
+            public int compare(Language o1, Language o2) {
+                return o1.getLanguage().compareToIgnoreCase(o2.getLanguage());
+            }
+        });
+        listLanguage.add(0, new Language("Auto detect", "ad"));
+        int i = 0;
         for(Language l : listLanguage){
             comboBoxInput.addItem(l.getLanguage());
-            comboBoxOutput.addItem(l.getLanguage());
+            if(i != 0){
+                comboBoxOutput.addItem(l.getLanguage());
+            }
+            else i = 1;
         }
     }
 
@@ -52,11 +62,13 @@ public class MainScreen extends javax.swing.JFrame {
         txtInput = new javax.swing.JTextArea();
         jScrollPane4 = new javax.swing.JScrollPane();
         txtOutput = new javax.swing.JTextArea();
+        btnSpeechOutput = new javax.swing.JButton();
+        btnSpeechInput = new javax.swing.JToggleButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Clone GG Translate");
 
-        btnTranslate.setText("Dich");
+        btnTranslate.setText("Translate");
         btnTranslate.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 btnTranslateActionPerformed(evt);
@@ -76,6 +88,15 @@ public class MainScreen extends javax.swing.JFrame {
         txtOutput.setWrapStyleWord(true);
         jScrollPane4.setViewportView(txtOutput);
 
+        btnSpeechOutput.setText("Speech");
+
+        btnSpeechInput.setText("Speech");
+        btnSpeechInput.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSpeechInputActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -83,21 +104,22 @@ public class MainScreen extends javax.swing.JFrame {
             .addGroup(layout.createSequentialGroup()
                 .addGap(27, 27, 27)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                    .addComponent(btnTranslate)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addComponent(comboBoxInput, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(126, 126, 126))
-                            .addGroup(layout.createSequentialGroup()
-                                .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 250, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(66, 66, 66)))
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addGroup(layout.createSequentialGroup()
+                                .addComponent(comboBoxInput, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(btnSpeechInput))
+                            .addComponent(jScrollPane3, javax.swing.GroupLayout.PREFERRED_SIZE, 279, javax.swing.GroupLayout.PREFERRED_SIZE))
+                        .addGap(37, 37, 37)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
                                 .addComponent(comboBoxOutput, javax.swing.GroupLayout.PREFERRED_SIZE, 190, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addGap(60, 60, 60))
-                            .addComponent(jScrollPane4))))
-                .addContainerGap(39, Short.MAX_VALUE))
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 22, Short.MAX_VALUE)
+                                .addComponent(btnSpeechOutput))
+                            .addComponent(jScrollPane4)))
+                    .addComponent(btnTranslate))
+                .addGap(10, 10, 10))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -105,12 +127,14 @@ public class MainScreen extends javax.swing.JFrame {
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(comboBoxInput, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                    .addComponent(comboBoxOutput, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(comboBoxOutput, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(btnSpeechOutput)
+                    .addComponent(btnSpeechInput))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                     .addComponent(jScrollPane3, javax.swing.GroupLayout.DEFAULT_SIZE, 250, Short.MAX_VALUE)
                     .addComponent(jScrollPane4))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 25, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 22, Short.MAX_VALUE)
                 .addComponent(btnTranslate)
                 .addGap(23, 23, 23))
         );
@@ -121,12 +145,59 @@ public class MainScreen extends javax.swing.JFrame {
     private void btnTranslateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTranslateActionPerformed
         // TODO add your handling code here:
         String text = txtInput.getText();
-        Language source = listLanguage.get(comboBoxInput.getSelectedIndex());
-        Language target = listLanguage.get(comboBoxOutput.getSelectedIndex());
-        String out = translateAPI.translate(text, source.getAcronym(), target.getAcronym());
+        String sourceString;
+        if(comboBoxInput.getSelectedIndex() == 0){
+            List<String> input = new ArrayList<>();
+            input.add(text);
+            List<Detection> detect = translateAPI.getDetection(input);
+            sourceString = detect.get(0).getLanguage();
+            int t = getLanguageByAcronym(sourceString);
+            if(t != -1){
+                comboBoxInput.setSelectedIndex(t);
+            }
+        }
+        else{
+            Language source = listLanguage.get(comboBoxInput.getSelectedIndex());
+            sourceString = source.getAcronym();
+        }
+        Language target = listLanguage.get(comboBoxOutput.getSelectedIndex() + 1);
+        String out = translateAPI.translate(text, sourceString, target.getAcronym());
         txtOutput.setText(out);
     }//GEN-LAST:event_btnTranslateActionPerformed
 
+    private void btnSpeechInputActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSpeechInputActionPerformed
+        // TODO add your handling code here:
+        if(btnSpeechInput.isSelected()){
+            btnSpeechInput.setText("Stop");
+            JavaSoundRecorder recorder = new JavaSoundRecorder();
+            Thread stopper = new Thread(new Runnable() {
+            public void run() {
+                try {
+                    Thread.sleep(RECORD_TIME);
+                } catch (InterruptedException ex) {
+                    ex.printStackTrace();
+                }
+                recorder.finish();
+            }
+        });
+        
+        stopper.start();
+        
+        // start recording
+        recorder.start();
+        }
+    }//GEN-LAST:event_btnSpeechInputActionPerformed
+
+    private int getLanguageByAcronym(String acronym){
+        for(int i = 0; i<listLanguage.size(); i++){
+            Language l = listLanguage.get(i);
+            if(l.getAcronym().compareTo(acronym) == 0){
+                return i;
+            }
+        }
+        return -1;
+    }
+    
     /**
      * @param args the command line arguments
      */
@@ -163,6 +234,8 @@ public class MainScreen extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JToggleButton btnSpeechInput;
+    private javax.swing.JButton btnSpeechOutput;
     private javax.swing.JButton btnTranslate;
     private javax.swing.JComboBox<String> comboBoxInput;
     private javax.swing.JComboBox<String> comboBoxOutput;
