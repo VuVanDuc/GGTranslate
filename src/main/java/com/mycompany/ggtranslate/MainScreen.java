@@ -6,44 +6,52 @@
 package com.mycompany.ggtranslate;
 
 import com.google.cloud.translate.Detection;
-import static com.mycompany.ggtranslate.JavaSoundRecorder.RECORD_TIME;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javax.swing.JOptionPane;
 
 /**
  *
  * @author VuDuc
  */
 public class MainScreen extends javax.swing.JFrame {
-    
+
     TranslateAPI translateAPI;
     ArrayList<Language> listLanguage;
     LanguageDAO db;
+    JavaSoundRecorder recorder;
 
     /**
      * Creates new form MainScreen
      */
     public MainScreen() {
         initComponents();
+        this.setLocationRelativeTo(null);
         translateAPI = new TranslateAPI();
         db = new LanguageDAO();
         listLanguage = db.getLanguageList();
-        listLanguage.sort(new Comparator<Language>(){
+        listLanguage.sort(new Comparator<Language>() {
             @Override
             public int compare(Language o1, Language o2) {
                 return o1.getLanguage().compareToIgnoreCase(o2.getLanguage());
             }
         });
-        listLanguage.add(0, new Language("Auto detect", "ad"));
+        listLanguage.add(0, new Language("Auto detect", "ad", null));
         int i = 0;
-        for(Language l : listLanguage){
+        for (Language l : listLanguage) {
             comboBoxInput.addItem(l.getLanguage());
-            if(i != 0){
+            if (i != 0) {
                 comboBoxOutput.addItem(l.getLanguage());
+            } else {
+                i = 1;
             }
-            else i = 1;
         }
+
+        recorder = new JavaSoundRecorder();
     }
 
     /**
@@ -89,6 +97,11 @@ public class MainScreen extends javax.swing.JFrame {
         jScrollPane4.setViewportView(txtOutput);
 
         btnSpeechOutput.setText("Speech");
+        btnSpeechOutput.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSpeechOutputActionPerformed(evt);
+            }
+        });
 
         btnSpeechInput.setText("Speech");
         btnSpeechInput.addActionListener(new java.awt.event.ActionListener() {
@@ -145,59 +158,82 @@ public class MainScreen extends javax.swing.JFrame {
     private void btnTranslateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnTranslateActionPerformed
         // TODO add your handling code here:
         String text = txtInput.getText();
-        String sourceString;
-        if(comboBoxInput.getSelectedIndex() == 0){
-            List<String> input = new ArrayList<>();
-            input.add(text);
-            List<Detection> detect = translateAPI.getDetection(input);
-            sourceString = detect.get(0).getLanguage();
-            int t = getLanguageByAcronym(sourceString);
-            if(t != -1){
-                comboBoxInput.setSelectedIndex(t);
+        if (text != "") {
+            String sourceString;
+            if (comboBoxInput.getSelectedIndex() == 0) {
+                List<String> input = new ArrayList<>();
+                input.add(text);
+                List<Detection> detect = translateAPI.getDetection(input);
+                sourceString = detect.get(0).getLanguage();
+                int t = getLanguageByAcronym(sourceString);
+                if (t != -1) {
+                    comboBoxInput.setSelectedIndex(t);
+                }
+            } else {
+                Language source = listLanguage.get(comboBoxInput.getSelectedIndex());
+                sourceString = source.getAcronym();
+            }
+            Language target = listLanguage.get(comboBoxOutput.getSelectedIndex() + 1);
+            if(sourceString.compareTo(target.getAcronym()) == 0){
+                txtOutput.setText(text);
+            }
+            else{
+                String out = translateAPI.translate(text, sourceString, target.getAcronym());
+                txtOutput.setText(out);
             }
         }
-        else{
-            Language source = listLanguage.get(comboBoxInput.getSelectedIndex());
-            sourceString = source.getAcronym();
-        }
-        Language target = listLanguage.get(comboBoxOutput.getSelectedIndex() + 1);
-        String out = translateAPI.translate(text, sourceString, target.getAcronym());
-        txtOutput.setText(out);
     }//GEN-LAST:event_btnTranslateActionPerformed
 
     private void btnSpeechInputActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSpeechInputActionPerformed
         // TODO add your handling code here:
-        if(btnSpeechInput.isSelected()){
-            btnSpeechInput.setText("Stop");
-            JavaSoundRecorder recorder = new JavaSoundRecorder();
-            Thread stopper = new Thread(new Runnable() {
-            public void run() {
-                try {
-                    Thread.sleep(RECORD_TIME);
-                } catch (InterruptedException ex) {
-                    ex.printStackTrace();
-                }
-                recorder.finish();
+        if (btnSpeechInput.isSelected()) {
+            if(comboBoxInput.getSelectedIndex() != 0){
+                btnSpeechInput.setText("Stop");
+                recorder.startRecording();
             }
-        });
-        
-        stopper.start();
-        
-        // start recording
-        recorder.start();
+            else{
+                JOptionPane.showMessageDialog(null, "Sorry. The auto detect feature is not supported yet! Please choose your language");
+                btnSpeechInput.setSelected(false);
+            }
+        } else {
+            try {
+                btnSpeechInput.setText("Speech");
+                recorder.stopRecording();
+
+                txtInput.setText(translateAPI.speechToText(listLanguage.get(comboBoxInput.getSelectedIndex()).getAcronym()));
+            } catch (IOException ex) {
+                Logger.getLogger(MainScreen.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }//GEN-LAST:event_btnSpeechInputActionPerformed
+    
+    private void btnSpeechOutputActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSpeechOutputActionPerformed
+        // TODO add your handling code here:
+//        translateAPI.play();
+        String s = txtOutput.getText();
+        if (s != "") {
+            Language target = listLanguage.get(comboBoxOutput.getSelectedIndex() + 1);
+            if(target.getLanguagecode() != null){
+                if (translateAPI.getSpeech(s, target.getLanguagecode()) == true) {
+                    translateAPI.play();
+                }
+            }
+            else{
+                JOptionPane.showMessageDialog(null, "Sorry. This language is not supported yet!");
+            }
+        }
+    }//GEN-LAST:event_btnSpeechOutputActionPerformed
 
-    private int getLanguageByAcronym(String acronym){
-        for(int i = 0; i<listLanguage.size(); i++){
+    private int getLanguageByAcronym(String acronym) {
+        for (int i = 0; i < listLanguage.size(); i++) {
             Language l = listLanguage.get(i);
-            if(l.getAcronym().compareTo(acronym) == 0){
+            if (l.getAcronym().compareTo(acronym) == 0) {
                 return i;
             }
         }
         return -1;
     }
-    
+
     /**
      * @param args the command line arguments
      */

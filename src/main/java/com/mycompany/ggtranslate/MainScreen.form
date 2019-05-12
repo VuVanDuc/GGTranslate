@@ -142,6 +142,9 @@
       <Properties>
         <Property name="text" type="java.lang.String" value="Speech"/>
       </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="btnSpeechOutputActionPerformed"/>
+      </Events>
     </Component>
     <Component class="javax.swing.JToggleButton" name="btnSpeechInput">
       <Properties>
